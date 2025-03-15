@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table, th, td { border: 1px solid black; padding: 10px; text-align: left; }
+        form { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <h2>Student Management System</h2>
+
+    <h3>Add/Edit Student</h3>
+    <form id="studentForm">
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="number" id="age" placeholder="Age" required>
+        <input type="text" id="grade" placeholder="Grade" required>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <h3>Student List</h3>
+    <table id="studentTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Grade</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Students will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script>
+        // Handle form submission and interactions
+        const studentForm = document.getElementById('studentForm');
+        const studentTable = document.getElementById('studentTable').getElementsByTagName('tbody')[0];
+        let editIndex = null;
+
+        studentForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const age = document.getElementById('age').value;
+            const grade = document.getElementById('grade').value;
+
+            const studentData = { name, age, grade };
+
+            // If we're editing, send an update request, otherwise add a new student
+            if (editIndex === null) {
+                // Add student
+                fetch('data.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'add', student: studentData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadStudents();
+                        studentForm.reset();
+                    } else {
+                        alert("Error adding student!");
+                    }
+                });
+            } else {
+                // Edit student
+                fetch('data.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'edit', index: editIndex, student: studentData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadStudents();
+                        studentForm.reset();
+                        editIndex = null; // Reset edit mode
+                    } else {
+                        alert("Error editing student!");
+                    }
+                });
+            }
+        });
+
+        // Load students from the backend
+        function loadStudents() {
+            fetch('data.php?action=fetch')
+            .then(response => response.json())
+            .then(data => {
+                const students = data.students;
+                studentTable.innerHTML = '';
+                students.forEach((student, index) => {
+                    const row = studentTable.insertRow();
+                    row.innerHTML = `
+                        <td>${student.name}</td>
+                        <td>${student.age}</td>
+                        <td>${student.grade}</td>
+                        <td>
+                            <button onclick="editStudent(${index})">Edit</button>
+                            <button onclick="deleteStudent(${index})">Delete</button>
+                        </td>
+                    `;
+                });
+            });
+        }
+
+        // Edit student
+        function editStudent(index) {
+            fetch('data.php?action=fetch')
+            .then(response => response.json())
+            .then(data => {
+                const student = data.students[index];
+                document.getElementById('name').value = student.name;
+                document.getElementById('age').value = student.age;
+                document.getElementById('grade').value = student.grade;
+                editIndex = index; // Set edit mode
+            });
+        }
+
+        // Delete student
+        function deleteStudent(index) {
+            fetch('data.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', index: index })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadStudents();
+                } else {
+                    alert("Error deleting student!");
+                }
+            });
+        }
+
+        // Load students when page loads
+        window.onload = loadStudents;
+    </script>
+
+</body>
+</html>
